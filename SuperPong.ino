@@ -2,14 +2,15 @@
 
 #define Y_JOY1 A1
 #define Y_JOY2 A0
+#define SECOND 1000
 
 struct Paddle {
-  int paddleX,paddleY;
+  int X,Y;
 };
 
 struct Ball {
-  int ballX, ballY;
-  int ballSpeedX, ballSpeedY;
+  int X, Y;
+  int directionX, directionY;
 };
 
 struct Player {
@@ -63,79 +64,81 @@ int GO[8][8] = {
 };
 
 unsigned long currentTime, timeOfLastBallMove, timeOfLastUpdate = 0, timeOfLastFirstPaddleMove = 0, timeOfLastSecondPaddleMove = 0;
-int valY1,valY2,paddleHeight = 3, ballSpawned = 0, periodPaddles = 100, periodBall = 1000, gameState = 0;
+int valY1,valY2,paddleHeight = 3, ballSpawned = 0, periodPaddles = 100, periodBall = 1000, gameState = 0, speedIncrement = 0;
 Paddle paddle1[3] = { {2 , 0}, {3 , 0}, {4 , 0} };
 Paddle paddle2[3] = { {2 , 7}, {3 , 7}, {4 , 7} };
 Ball ball;
 Player player1,player2;
 
 void drawPaddles() {
- for(int i = 0; i < paddleHeight; i++) {
-     lc.setLed(0,paddle1[i].paddleX,paddle1[i].paddleY,1);  
-     lc.setLed(0,paddle2[i].paddleX,paddle2[i].paddleY,1);
+ for (int i = 0; i < paddleHeight; i++) {
+     lc.setLed(0,paddle1[i].X,paddle1[i].Y,1);  
+     lc.setLed(0,paddle2[i].X,paddle2[i].Y,1);
  }
 }
 
 void spawnBall() {
-  ball.ballX = random(3,5);
-  ball.ballY = random(3,5);
+  ball.X = random(3,5);
+  ball.Y = random(3,5);
   int randX = random(0,10);
   int randY = random(0,10);
-  if(randX % 2 == 0) ball.ballSpeedX = 1;
-  else ball.ballSpeedX = -1;
-  if(randY % 2 == 0) ball.ballSpeedY = 1;
-  else ball.ballSpeedY = -1;
+  if (randX % 2 == 0) 
+    ball.directionX = 1;
+  else 
+    ball.directionX = -1;
+  if(randY % 2 == 0) 
+    ball.directionY = 1;
+  else 
+    ball.directionY = -1;
   ballSpawned = 1;
 }
 
 void drawBall() {
-  lc.setLed(0,ball.ballX,ball.ballY,1);  
+  lc.setLed(0,ball.X,ball.Y,1);  
 }
 
 void lowerPaddle(Paddle p[],int n) {
-  if(p[0].paddleX + n <= 7) p[0].paddleX += n;
-  for(int i = 1; i < paddleHeight; i++) {
-    p[i].paddleX = p[i-1].paddleX - 1;
+  if (p[0].X == 0) 
+    return;
+  for (int i = 0; i < paddleHeight; i++) {
+    p[i].X -= n;
   }
 }
 
 void raisePaddle(Paddle p[],int n) {
-  if(p[0].paddleX - n >= 0) p[0].paddleX -= n;
-  for(int i = 1; i < paddleHeight; i++) {
-    p[i].paddleX = p[i-1].paddleX + 1;
+  if (p[paddleHeight - 1].X == 7) 
+    return;
+  for (int i = 0; i < paddleHeight; i++) {
+    p[i].X += n;
   }
 }
 
 void detectBoundCollision() {
-  if(ball.ballY < 0 || ball.ballY > 7) ball.ballSpeedY *= -1;  
+  if (ball.X <= 0 || ball.X >= 7) ball.directionX *= -1;  
 }
 
 void checkIfScored() {
-  if(ball.ballX <= 0 || ball.ballX >= 7) {
-    if(ball.ballX <= 0) player2.score++;
-    else if(ball.ballX >= 7) player1.score++;
-   // reset();
- /* Serial.println("Scor player1:");
-  Serial.println(player1.score);
-  Serial.println("Scor player2:");
-  Serial.println(player2.score); */
+  if(ball.Y <= 0 || ball.Y >= 7) {
+    if(ball.Y <= 0) 
+      player2.score++;
+    else if(ball.Y >= 7) 
+      player1.score++;
    ballSpawned = 0;
    gameState = 0;
+   speedIncrement = 0;
   }
 }
 
-//this function isn't properly working
 void detectPaddleCollision() {
-  if(ball.ballX >= paddle1[0].paddleX && ball.ballX <= paddle1[paddleHeight - 1].paddleX && ball.ballY == paddle1[0].paddleY + 1) { //check if the ball is next to the first paddle
-    Serial.println("OK1");
-    if(ball.ballSpeedX == -1)         //if heading towards the paddle
-      ball.ballSpeedX *= -1;         //change direction on X axis
+  if(ball.X >= paddle1[0].X && ball.X <= paddle1[paddleHeight - 1].X && ball.Y == paddle1[0].Y + 1
+    ) {//check if the ball is next to the first paddle         //if heading towards the paddle
+      ball.directionY *= -1;         //change direction on X axis
+      speedIncrement += 50;
   }
   //check collision for the second paddle
-  if(ball.ballX >= paddle2[0].paddleX && ball.ballX <= paddle2[paddleHeight - 1].paddleX && ball.ballY == paddle2[0].paddleY - 1) {
-    Serial.println("OK2");
-    if(ball.ballSpeedX == 1)
-      ball.ballSpeedX *= -1;
+  if(ball.X >= paddle2[0].X && ball.X <= paddle2[paddleHeight - 1].X && ball.Y == paddle2[0].Y - 1) {
+      ball.directionY *= -1;
+      speedIncrement += 50;
   }
 }
 
@@ -163,8 +166,8 @@ void movePaddles() {
 }
 
 void updateBall() {
-  ball.ballX += ball.ballSpeedX;
-  ball.ballY += ball.ballSpeedY;
+  ball.X += ball.directionX;
+  ball.Y += ball.directionY;
   timeOfLastBallMove= millis();
   detectPaddleCollision();
   detectBoundCollision();
@@ -177,7 +180,7 @@ void draw() {
   drawPaddles();
   drawBall();
   movePaddles();
-  if(millis() - timeOfLastBallMove > periodBall) 
+  if(millis() - timeOfLastBallMove > periodBall - speedIncrement) 
   updateBall();
   currentTime = millis();
   timeOfLastUpdate = millis();
@@ -197,23 +200,23 @@ void displayMatrix(int m[8][8]) {
 void playCountdown() {
   currentTime = millis();
   displayMatrix(three);
-  while (millis() < currentTime + 1000) {}
+  while (millis() < currentTime + SECOND) {}
   displayMatrix(two);
-  while (millis() < currentTime + 2000) {}
+  while (millis() < currentTime + 2*SECOND) {}
   displayMatrix(one);
-  while (millis() < currentTime + 3000) {}
+  while (millis() < currentTime + 3*SECOND) {}
   displayMatrix(GO);
-  while (millis() < currentTime + 4000) {}
+  while (millis() < currentTime + 4*SECOND) {}
 }
 
 void setPaddles() {
  // paddle1[3] = { {2 , 0}, {3 , 0}, {4 , 0} };
  // paddle2[3] = { {2 , 7}, {3 , 7}, {4 , 7} };
  for (int i = 0; i < 3; i++) {
-    paddle1[i].paddleX = i + 2;
-    paddle1[i].paddleY = 0;
-    paddle2[i].paddleX = i + 2;
-    paddle2[i].paddleY = 7;
+    paddle1[i].X = i + 2;
+    paddle1[i].Y = 0;
+    paddle2[i].X = i + 2;
+    paddle2[i].Y = 7;
   }
 }
 
@@ -229,7 +232,7 @@ void setup() {
 
 void loop() {
   if(!gameState) {
-   // playCountdown();
+    playCountdown();
     setPaddles();
     gameState = 1;
   } else {
