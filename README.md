@@ -26,3 +26,7 @@
   ## Beginning a new game
   
    After a game reaches its end, the players can choose to play again by unplugging and replugging the arduino board to a power source
+
+## Video
+
+https://www.youtube.com/watch?v=w7cn9KRJ1J8
